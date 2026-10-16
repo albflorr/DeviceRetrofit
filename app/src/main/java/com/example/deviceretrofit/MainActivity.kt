@@ -9,12 +9,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.lifecycleScope
+import com.example.deviceretrofit.data.Constants
 import com.example.deviceretrofit.data.Device
 import com.example.deviceretrofit.data.Spec
+import com.example.deviceretrofit.service.DeviceService
 import com.example.deviceretrofit.ui.theme.DeviceRetrofitTheme
 import com.example.deviceretrofit.view.MainView
+import kotlinx.coroutines.launch
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,20 +32,35 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             DeviceRetrofitTheme {
+
+                var devices by remember { mutableStateOf(listOf<Device>()) }
+                getDevices { result ->
+                    devices = result
+                }
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainView(modifier = Modifier.padding(innerPadding),
-                        listOf(Device(1
-                            ,"Google Pixel 6 Pro"
-                            , Spec("White","158Gb","Celphone")
-                        ), Device(2
-                            ,"iPhone 17 Pro"
-                            , null)
-                        )
-                    )
+                        devices)
                 }
             }
         }
     }
+
+    private fun getDevices(onResult: (List<Device>)->Unit){
+        val retrofit = Retrofit.Builder()
+            .baseUrl(Constants.BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        val service = retrofit.create(DeviceService::class.java)
+
+        lifecycleScope.launch {
+            val devices = service.getAllDevices()
+            onResult(devices)
+        }
+
+    }
+
 }
 
 @Composable
